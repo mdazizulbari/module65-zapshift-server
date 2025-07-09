@@ -31,9 +31,19 @@ async function run() {
 
     // 📨 Create parcel
     app.post("/parcels", async (req, res) => {
-      const newParcel = req.body;
-      const result = await parcelsCollection.insertOne(newParcel);
-      res.send(result);
+      try {
+        const newParcel = req.body;
+        const result = await parcelsCollection.insertOne(newParcel);
+        res.status(201).send({
+          result,
+        });
+      } catch (error) {
+        console.error("❌ Failed to create parcel:", error.message);
+        res.status(500).send({
+          message: "Something went wrong while saving parcel",
+          error: error.message,
+        });
+      }
     });
 
     // 📦 Get all parcels
