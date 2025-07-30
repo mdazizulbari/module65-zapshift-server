@@ -26,7 +26,7 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-    const db = client.db(dbName);
+    const db = client.db("zapShift");
     const parcelsCollection = db.collection("parcels");
 
     // 📨 Create parcel
@@ -34,9 +34,7 @@ async function run() {
       try {
         const newParcel = req.body;
         const result = await parcelsCollection.insertOne(newParcel);
-        res.status(201).send({
-          result,
-        });
+        res.status(201).send(result);
       } catch (error) {
         console.error("❌ Failed to create parcel:", error.message);
         res.status(500).send({
