@@ -10,7 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 // mongodb setup
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = process.env.MONGODB_URI;
 
 const client = new MongoClient(uri, {
@@ -48,6 +48,19 @@ async function run() {
     app.get("/parcels", async (req, res) => {
       const parcels = await parcelsCollection.find().toArray();
       res.send(parcels);
+    });
+
+    // 🚫 Delete a parcel by _id
+    app.delete("/parcels/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await parcelsCollection.deleteOne(query);
+        res.json(result);
+      } catch (error) {
+        console.error("❌ Error deleting parcel:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
     });
 
     // Send a ping to confirm a successful connection
