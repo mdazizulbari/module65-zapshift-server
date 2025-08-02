@@ -32,6 +32,7 @@ async function run() {
     const db = client.db("zapShift");
     const parcelsCollection = db.collection("parcels");
     const paymentsCollection = db.collection("payments");
+    const trackingCollection = db.collection("tracks");
 
     // 📨 Create parcel
     app.post("/parcels", async (req, res) => {
@@ -134,17 +135,13 @@ async function run() {
           paid_at_string: new Date().toISOString(),
         };
 
-        const paymentResult = await db
-          .collection("payments")
-          .insertOne(paymentRecord);
+        const paymentResult = await paymentsCollection.insertOne(paymentRecord);
 
         // 2. Update the parcel as paid
-        const updateResult = await db
-          .collection("parcels")
-          .updateOne(
-            { _id: new ObjectId(parcelId) },
-            { $set: { payment_status: "paid" } }
-          );
+        const updateResult = await parcelsCollection.updateOne(
+          { _id: new ObjectId(parcelId) },
+          { $set: { payment_status: "paid" } }
+        );
 
         res.status(200).json({
           message: "Payment recorded and parcel marked as paid",
@@ -157,13 +154,13 @@ async function run() {
       }
     });
 
+    // getting the payments by email or all for admin
     app.get("/payments", async (req, res) => {
       try {
         const userEmail = req.query.email;
 
         const query = userEmail ? { email: userEmail } : {};
-        const payments = await db
-          .collection("payments")
+        const payments = await paymentsCollection
           .find(query)
           .sort({ paid_at: -1 }) // descending
           .toArray();
@@ -173,6 +170,28 @@ async function run() {
         console.error("❌ Error getting payments:", error.message);
         res.status(500).json({ message: "Internal server error" });
       }
+    });
+
+    // adding a tracking
+    app.post("/tracking", async (req, res) => {
+      const {
+        tracking_id,
+        parcel_id,
+        status,
+        message,
+        updated_by = "",
+      } = req.body;
+      const log = {
+        tracking_id,
+        parcel_id: parcel_id ? new ObjectId(parcel_id) : undefined,
+        status,
+        message,
+        updated_by,
+        time: new Date(),
+      };
+
+      const result = await trackingCollection.insertOne(log);
+      res.send({ success: true, insertedId: result.insertedId });
     });
 
     // Send a ping to confirm a successful connection
