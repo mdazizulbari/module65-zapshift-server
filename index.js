@@ -31,6 +31,7 @@ async function run() {
 
     const db = client.db("zapShift");
     const parcelsCollection = db.collection("parcels");
+    const paymentsCollection = db.collection("payments");
 
     // 📨 Create parcel
     app.post("/parcels", async (req, res) => {
@@ -147,11 +148,29 @@ async function run() {
 
         res.status(200).json({
           message: "Payment recorded and parcel marked as paid",
-          paymentId: paymentResult.insertedId,
+          insertedId: paymentResult.insertedId,
           updated: updateResult.modifiedCount,
         });
       } catch (error) {
         console.error("❌ Error recording payment:", error.message);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+
+    app.get("/payments", async (req, res) => {
+      try {
+        const userEmail = req.query.email;
+
+        const query = userEmail ? { email: userEmail } : {};
+        const payments = await db
+          .collection("payments")
+          .find(query)
+          .sort({ paid_at: -1 }) // descending
+          .toArray();
+
+        res.status(200).json(payments);
+      } catch (error) {
+        console.error("❌ Error getting payments:", error.message);
         res.status(500).json({ message: "Internal server error" });
       }
     });
