@@ -33,6 +33,21 @@ async function run() {
     const parcelsCollection = db.collection("parcels");
     const paymentsCollection = db.collection("payments");
     const trackingCollection = db.collection("tracks");
+    const usersCollection = db.collection("users");
+
+    //
+    app.post("/users", async (req, res) => {
+      const email = req.body.email;
+      const userExists = await usersCollection.findOne({ email });
+      if (userExists) {
+        return res
+          .status(200)
+          .send({ message: "User already exists", inserted: false });
+      }
+      const user = req.body;
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
 
     // 📨 Create parcel
     app.post("/parcels", async (req, res) => {
