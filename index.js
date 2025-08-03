@@ -40,6 +40,7 @@ async function run() {
       const email = req.body.email;
       const userExists = await usersCollection.findOne({ email });
       if (userExists) {
+        // update last login
         return res
           .status(200)
           .send({ message: "User already exists", inserted: false });
@@ -65,26 +66,27 @@ async function run() {
     });
 
     // 📦 Get all parcels
+    // app.get("/parcels", async (req, res) => {
+    //   const parcels = await parcelsCollection.find().toArray();
+    //   res.send(parcels);
+    // });
+
+    // GET: All parcels OR parcels by user userEmail, sorted by latest
     app.get("/parcels", async (req, res) => {
-      const parcels = await parcelsCollection.find().toArray();
-      res.send(parcels);
-    });
-
-    // 📦 Get a parcel by ID
-    app.get("/parcels/:id", async (req, res) => {
       try {
-        const id = req.params.id;
-        const query = { _id: new ObjectId(id) };
-        const parcel = await parcelsCollection.findOne(query);
+        const userEmail = req.query.email;
 
-        if (!parcel) {
-          return res.status(404).json({ message: "Parcel not found" });
-        }
+        console.log(req.headers);
+        const query = userEmail ? { userEmail } : {};
+        const options = {
+          sort: { creation_date: -1 }, // Newest first
+        };
 
-        res.status(200).json(parcel);
+        const parcels = await parcelsCollection.find(query, options).toArray();
+        res.send(parcels);
       } catch (error) {
-        console.error("❌ Error getting parcel by ID:", error);
-        res.status(500).json({ message: "Internal Server Error" });
+        console.error("Error fetching parcels:", error);
+        res.status(500).send({ message: "Failed to get parcels" });
       }
     });
 
