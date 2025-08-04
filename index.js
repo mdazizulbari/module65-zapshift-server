@@ -3,6 +3,7 @@ require("dotenv").config();
 const stripe = require("stripe")(process.env.PAYMENT_GATEWAY_KEY);
 const cors = require("cors");
 const bodyParser = require("body-parser");
+const admin = require("firebase-admin");
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -11,6 +12,12 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(bodyParser.json());
+
+// firebase
+const serviceAccount = require("./firebaseAdmin-key.json");
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
 
 // mongodb setup
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
@@ -35,7 +42,28 @@ async function run() {
     const trackingCollection = db.collection("tracks");
     const usersCollection = db.collection("users");
 
-    //
+    // custom middlewares
+    const verifyFBToken = async (req, res, next) => {
+      const authHeader = req.headers.authorization;
+      if (!authHeader) {
+        return res.status(401).send({ message: "Unauthorized access" });
+      }
+      const token = authHeader.split(" ")[1];
+      if (!token) {
+        return res.status(401).send({ message: "Unauthorized access" });
+      }
+
+      // verify the token
+      try {
+        const decoded = await admin.auth().verifyIdToken(token);
+        req.decoded = decoded;
+        next();
+      } catch (error) {
+        return res.status(403).send({ message: "Forbidden access" });
+      }
+    };
+
+    // add users in usersCollection
     app.post("/users", async (req, res) => {
       const email = req.body.email;
       const userExists = await usersCollection.findOne({ email });
@@ -72,7 +100,7 @@ async function run() {
     // });
 
     // GET: All parcels OR parcels by user userEmail, sorted by latest
-    app.get("/parcels", async (req, res) => {
+    app.get("/parcels", verifyFBToken, async (req, res) => {
       try {
         const userEmail = req.query.email;
 
@@ -87,6 +115,26 @@ async function run() {
       } catch (error) {
         console.error("Error fetching parcels:", error);
         res.status(500).send({ message: "Failed to get parcels" });
+      }
+    });
+
+    // GET: Get a specific parcel by ID
+    app.get("/parcels/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+
+        const parcel = await parcelsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!parcel) {
+          return res.status(404).send({ message: "Parcel not found" });
+        }
+
+        res.send(parcel);
+      } catch (error) {
+        console.error("Error fetching parcel:", error);
+        res.status(500).send({ message: "Failed to fetch parcel" });
       }
     });
 
@@ -172,9 +220,15 @@ async function run() {
     });
 
     // getting the payments by email or all for admin
-    app.get("/payments", async (req, res) => {
+    app.get("/payments", verifyFBToken, async (req, res) => {
+      console.log("Headers in payment", req.headers);
+
       try {
         const userEmail = req.query.email;
+        console.log("decoded", req.decoded);
+        if (req.decoded.email !== userEmail) {
+          return res.status(405).send({ message: "Forbidden access" });
+        }
 
         const query = userEmail ? { email: userEmail } : {};
         const payments = await paymentsCollection
