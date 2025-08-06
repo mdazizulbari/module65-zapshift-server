@@ -159,6 +159,49 @@ async function run() {
       res.send(result);
     });
 
+    // Get all riders with pending status
+    app.get("/riders/pending", async (req, res) => {
+      try {
+        const pendingList = await ridersCollection
+          .find({ status: "pending" })
+          .sort({ _id: -1 }) // Newest first
+          .toArray();
+
+        res.status(200).json(pendingList);
+      } catch (err) {
+        console.error("❌ Error fetching pending riders:", err);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
+    // Get all riders with active status
+    app.get("/riders/active", async (req, res) => {
+      try {
+        const activeList = await ridersCollection
+          .find({ status: "active" })
+          .sort({ _id: -1 })
+          .toArray();
+
+        res.status(200).json(activeList);
+      } catch (err) {
+        console.error("❌ Error fetching active riders:", err);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
+    app.patch("/riders/:id/approve", async (req, res) => {
+      await ridersCollection.updateOne(
+        { _id: new ObjectId(req.params.id) },
+        { $set: { status: "active" } }
+      );
+      res.send({ success: true });
+    });
+
+    app.patch("/riders/:id/reject", async (req, res) => {
+      await ridersCollection.deleteOne({ _id: new ObjectId(req.params.id) });
+      res.send({ success: true });
+    });
+
     // create payment intent
     app.post("/create-payment-intent", async (req, res) => {
       try {
