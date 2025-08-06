@@ -41,6 +41,7 @@ async function run() {
     const paymentsCollection = db.collection("payments");
     const trackingCollection = db.collection("tracks");
     const usersCollection = db.collection("users");
+    const ridersCollection = db.collection("riders");
 
     // custom middlewares
     const verifyFBToken = async (req, res, next) => {
@@ -149,6 +150,13 @@ async function run() {
         console.error("❌ Error deleting parcel:", error);
         res.status(500).json({ message: "Internal Server Error" });
       }
+    });
+
+    // adding a rider
+    app.post("/riders", async (req, res) => {
+      const rider = req.body;
+      const result = await ridersCollection.insertOne(rider);
+      res.send(result);
     });
 
     // create payment intent
