@@ -189,6 +189,7 @@ async function run() {
       }
     });
 
+    // changing rider state to active
     app.patch("/riders/:id/approve", async (req, res) => {
       await ridersCollection.updateOne(
         { _id: new ObjectId(req.params.id) },
@@ -197,6 +198,7 @@ async function run() {
       res.send({ success: true });
     });
 
+    // changing rider state to rejected / deleted
     app.patch("/riders/:id/reject", async (req, res) => {
       await ridersCollection.deleteOne({ _id: new ObjectId(req.params.id) });
       res.send({ success: true });
